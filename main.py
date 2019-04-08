@@ -18,4 +18,5 @@ class main():
 # Xf = input()
 # print('Field width = ')
 # Yf = input()
+
 MainWin = main(N = int(Xf), M = int(Yf))
