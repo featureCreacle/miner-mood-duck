@@ -110,6 +110,7 @@ class forest_abstract():
                 tree.copsNear = 0
                 tree.pb = 0.0
                 tree.copsWithP1 = set()
+                tree.ucoverTreesNear = 0
                 row.append(tree)
                 j += 1
             treeMap.append(row)
@@ -466,6 +467,7 @@ class forest_abstract():
         for crd in crdMinP:
             tree = self.treeMap[crd[0]][crd[1]]
             self.set_ok_icon(tree)
+            self.countUncoverTreeNear(tree)
             treeBut = self.treeButMap[tree.x][tree.y]
             treeBut.toolTip.set_text(str(tree.pb if tree.pb != mg else 1))
             treeBut.toolTip.on()
@@ -542,6 +544,23 @@ class forest_abstract():
             i += 1
         return t
 
+    def countUncoverTreeNear(self, tree):
+        x = tree.treeCord[0]
+        y = tree.treeCord[1]
+        t = 0
+        i = x - 1
+        while (i <= x + 1):
+            j = y - 1
+            while (j <= y + 1):
+                if i >= 0 and i < self.feildSize[0] and \
+                        j >= 0 and j < self.feildSize[1]:
+                    treeT = self.treeMap[i][j]
+                    if treeT.iconNumber <= iconEnum['alert']:
+                        t += 1
+                j += 1
+            i += 1
+        tree.ucoverTreesNear = t
+
     def countNumbersNear(self,tree):
         x = tree.treeCord[0]
         y = tree.treeCord[1]
@@ -613,18 +632,23 @@ class forest_abstract():
             tree = self.treeMap[crd[0]][crd[1]]
             if tree.pb == mg:
                 self.mark_tree(tree)
-                return True
+                maxPb = mg
             elif maxPb < tree.pb:
                 maxPb = tree.pb
                 treeWithMaxPb = tree
+        if maxPb == mg:
+            return True
         minPb = 1.0
         treeWithMinPb = None
+        uncoverTrees = 0
         for crd in crdMinP:
             tree = self.treeMap[crd[0]][crd[1]]
             if tree.pb == 0:
                 self.get_zakladka(crd[0], crd[1],showMessage=showMessage)
                 return True
-            elif tree.pb < minPb:
+            elif tree.ucoverTreesNear >= uncoverTrees:
+            # elif tree.pb < minPb:
+                uncoverTrees = tree.ucoverTreesNear
                 minPb = tree.pb
                 treeWithMinPb = tree
 
