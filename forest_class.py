@@ -33,50 +33,15 @@ gameResultEmum = { 'lose'    : 0,
 
 magicNumber = 8 # shift tge top border for probability
 
-class TreeInForest(Button):
-    """Button widget."""
-    def __init__(self, master=None, cnf={}, **kw):
-        """Construct a button widget with the parent MASTER.
-
-        STANDARD OPTIONS
-
-            activebackground, activeforeground, anchor,
-            background, bitmap, borderwidth, cursor,
-            disabledforeground, font, foreground
-            highlightbackground, highlightcolor,
-            highlightthickness, image, justify,
-            padx, pady, relief, repeatdelay,
-            repeatinterval, takefocus, text,
-            textvariable, underline, wraplength
-
-        WIDGET-SPECIFIC OPTIONS
-
-            command, compound, default, height,
-            overrelief, state, width
-        """
-        #treeStatus = treeStatusEnum['sweet']
-        #treeCord = (0,0)
-        super().__init__(master, cnf, **kw)
+class tree_abstract():
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.treeCord = (x,y)
 
 class forest_abstract():
     def __init__(self, master=None, N=16, M=16, copsRate = 0.16):
         self.varCopsNum = StringVar()
-        self.set_defaults(master=master, N=N, M=M, copsRate=copsRate)
-
-    def set_defaults(self,  master=None, N=16, M=16, copsRate = 0.16 ):
-        self.master = master
-        self.feildSize = (N, M)
-        self.StepCounter = 0
-        self.copsRate = copsRate
-        self.copsSpoted = 0
-        self.copsInBush = 0
-        self.varCopsNum.set(int(N * M * copsRate))
-        self.isNewGame = True
-        # AI var
-        self.gameIsOver = False
-        self.Result = 0
-        self.lastBadGuess = []
-        # interface
         self.icons = []
         self.icons.append(PhotoImage(file='res/sweet.gif'))  # 0
         self.icons.append(PhotoImage(file='res/numbers/one.gif'))  # 1
@@ -98,30 +63,57 @@ class forest_abstract():
         self.icons.append(PhotoImage(file='res/bad_guess.gif'))  # 17
         self.icons.append(PhotoImage(file='res/ok.gif'))  # 18
         self.icons.append(PhotoImage(file='res/no.gif'))  # 19
+        treeButMap = []
+        i = 0
+        while (i < N):
+            j = 0
+            rowButtons = []
+            while (j < M):
+                treeBut = Button(master=master, image=self.icons[iconEnum['tree']],
+                                       command=lambda x=i, y=j: self.get_zakladka(x, y))
+                treeBut.bind('<Button-2>', self.check_near)
+                treeBut.bind('<ButtonRelease-2>', self.check_near)
+                treeBut.bind('<Button-3>', self.mark_tree_event)
+                treeBut.grid(row=i, column=j, columnspan=1)
+                treeBut.treeCord = (i, j)
+                treeBut.toolTip = CreateToolTip(treeBut, '')
+                rowButtons.append(treeBut)
+                j += 1
+            treeButMap.append(rowButtons)
+            i += 1
+        self.treeButMap = treeButMap
+        self.set_defaults(master=master, N=N, M=M, copsRate=copsRate)
+
+############################################
+    def set_defaults(self,  master=None, N=16, M=16, copsRate = 0.16 ):
+        self.master = master
+        self.feildSize = (N, M)
+        self.StepCounter = 0
+        self.copsRate = copsRate
+        self.copsSpoted = 0
+        self.copsInBush = 0
+        self.varCopsNum.set(int(N * M * copsRate))
+        self.isNewGame = True
+        # AI var
+        self.gameIsOver = False
+        self.Result = 0
+        self.lastBadGuess = []
         treeMap = []
         i = 0
         while (i < N):
             j = 0
             row = []
             while (j < M):
-                tree = TreeInForest(master=master, image=self.icons[iconEnum['tree']],
-                                    command=lambda x=i, y=j: self.get_zakladka(x, y))
-                tree.bind('<Button-2>', self.check_near)
-                tree.bind('<ButtonRelease-2>', self.check_near)
-                tree.bind('<Button-3>', self.mark_tree_event)
+                tree = tree_abstract(x = i, y = j)
                 tree.treeStatus = treeStatusEnum['sweet']
                 tree.iconNumber = iconEnum['tree']
                 tree.copsNear = 0
                 tree.pb = 0.0
                 tree.copsWithP1 = set()
-                tree.toolTip = CreateToolTip(tree, '')
-                tree.treeCord = (i, j)
-                tree.grid(row=i, column=j, columnspan=1)
                 row.append(tree)
                 j += 1
             treeMap.append(row)
             i += 1
-        self.treeMap = []
         self.treeMap = treeMap
 
     def placeCops(self, denX, denY):
@@ -147,6 +139,7 @@ class forest_abstract():
                 j += 1
             i += 1
 
+############################################
     def get_zakladka(self, x, y, showMessage = True):
         self.isNewGame = False
         tree = self.treeMap[x][y]
@@ -156,16 +149,16 @@ class forest_abstract():
             self.StepCounter += 1
             self.placeCops(x,y)
             if tree.copsNear == 0:
-                self.set_sweet_icon(tree)
+                self.set_icon_by_name(tree, 'sweet')
                 self.uncover_blank_area(tree)
             else:
-                self.set_cops_number(tree)
+                self.set_icon_by_num(tree, tree.copsNear)
         else:
             if tree.treeStatus == treeStatusEnum['sweet']:
                 if tree.copsNear > 0:
-                    self.set_cops_number(tree)
+                    self.set_icon_by_num(tree, tree.copsNear)
                 else:
-                    self.set_sweet_icon(tree)
+                    self.set_icon_by_name(tree, 'sweet')
                     self.uncover_blank_area(tree)
             elif tree.treeStatus == treeStatusEnum['cop']:
                 self.uncover_forest(tree, showMessage)
@@ -175,36 +168,37 @@ class forest_abstract():
         if self.check_win():
             self.uncover_forest(showMessage=showMessage)
 
-    def mark_tree_event(self, event):
+    def mark_tree_event(self, event, showMessage = True):
         self.isNewGame = False
         crd = event.widget.treeCord
         tree = self.treeMap[crd[0]][crd[1]]
         islastMark = self.mark_tree(tree)
         if islastMark:
-            self.uncover_forest()
+            self.uncover_forest(showMessage = showMessage)
 
     def mark_tree(self, tree):
         if tree.iconNumber == iconEnum['tree']:
-            self.set_alert_icon(tree)
+            self.set_icon_by_name(tree, 'alert')
             self.varCopsNum.set(int(self.varCopsNum.get()) - 1)
             if tree.treeStatus == treeStatusEnum['cop']:
                 self.copsSpoted += 1
             if self.copsInBush > 0 and self.copsInBush == self.copsSpoted:
                 return self.check_win()
         elif tree.iconNumber == iconEnum['alert']:
-            self.set_question_icon(tree)
+            self.set_icon_by_name(tree, 'question')
             if tree.treeStatus == treeStatusEnum['cop']:
                 self.copsSpoted -= 1
             self.varCopsNum.set(int(self.varCopsNum.get()) + 1)
         elif tree.iconNumber == iconEnum['question']:
-            self.set_tree_icon(tree)
+            self.set_icon_by_name(tree, 'tree')
+
         return False
 
     def check_near(self, event):
         self.isNewGame = False
-        tree = event.widget
-        x = tree.treeCord[0]
-        y = tree.treeCord[1]
+        x = event.widget.treeCord[0]
+        y = event.widget.treeCord[1]
+        tree = self.treeMap[x][y]
         alertsNear = 0
         if event.type == EventType['ButtonPress']: #нажатие
             i = x - 1
@@ -273,38 +267,41 @@ class forest_abstract():
             if self.check_win():
                 self.uncover_forest()
 
-    def set_tree_icon(self, tree):
-        self.set_icon_by_name(tree, 'tree')
-
-    def set_cop_icon(self, tree):
-        tree['image'] = self.icons[iconEnum['cop']]
-
-    def set_sweet_icon(self, tree):
-        self.set_icon_by_name(tree, 'sweet')
-
+###########################################
     def set_blank_icon(self, tree):
-        tree['image'] = self.icons[iconEnum['blank']]
+        x = tree.x
+        y = tree.y
+        self.treeButMap[x][y]['image'] = self.icons[iconEnum['blank']]
 
-    def set_alert_icon(self, tree):
-        self.set_icon_by_name(tree, 'alert')
+    def set_ok_icon(self, tree):
+        x = tree.x
+        y = tree.y
+        self.treeButMap[x][y]['image'] = self.icons[iconEnum['ok']]
 
-    def set_question_icon(self, tree):
-        self.set_icon_by_name(tree, 'question')
+    def set_no_icon(self, tree):
+        x = tree.x
+        y = tree.y
+        self.treeButMap[x][y]['image'] = self.icons[iconEnum['no']]
 
-    def set_cops_number(self, tree):
-        if tree.copsNear > 0:
-            self.set_icon_by_num(tree, tree.copsNear)
+    def set_badguess_icon(self, tree):
+        x = tree.x
+        y = tree.y
+        self.treeButMap[x][y]['image'] = self.icons[iconEnum['badGuess']]
+
 
     def set_icon_by_num(self, tree, iconNum):
         tree.iconNumber = iconNum
-        tree['image'] = self.icons[tree.iconNumber]
+        x = tree.x
+        y = tree.y
+        self.treeButMap[x][y]['image'] = self.icons[tree.iconNumber]
 
     def set_icon_by_name(self, tree, name):
-        tree.iconNumber = iconEnum[name]
-        tree['image'] = self.icons[tree.iconNumber]
+        self.set_icon_by_num(tree, iconEnum[name])
 
     def restore_icon(self, tree):
-        tree['image'] = self.icons[tree.iconNumber]
+        x = tree.x
+        y = tree.y
+        self.treeButMap[x][y]['image'] = self.icons[tree.iconNumber]
 
     def restore_all_icons(self):
         i = 0
@@ -312,10 +309,11 @@ class forest_abstract():
             j = 0
             while (j < self.feildSize[1]):
                 self.restore_icon(self.treeMap[i][j])
-                self.treeMap[i][j].toolTip.off()
+                self.treeButMap[i][j].toolTip.off()
                 j += 1
             i += 1
 
+#################################################
     def uncover_blank_area(self, tree):
         x = tree.treeCord[0]
         y = tree.treeCord[1]
@@ -329,9 +327,9 @@ class forest_abstract():
                     if treeT.treeStatus == treeStatusEnum['sweet'] and \
                             treeT.iconNumber > iconEnum['eight']:
                         if treeT.copsNear > 0:
-                            self.set_cops_number(treeT)
+                            self.set_icon_by_num(treeT, treeT.copsNear)
                         else:
-                            self.set_sweet_icon(treeT)
+                            self.set_icon_by_name(treeT, 'sweet')
                             self.uncover_blank_area(treeT)
                 j += 1
             i += 1
@@ -348,7 +346,7 @@ class forest_abstract():
                     if tree.iconNumber == iconEnum['alert']:
                         self.set_icon_by_name(tree, 'wrgGuess')
                     else:
-                        self.set_sweet_icon(tree)
+                        self.set_icon_by_name(tree, 'sweet')
                 elif tree.treeStatus == treeStatusEnum['cop']:
                     if tree.iconNumber == iconEnum['alert']:
                         self.set_icon_by_name(tree, 'sptdCop')
@@ -363,7 +361,7 @@ class forest_abstract():
             self.Result = gameResultEmum['win']
             self.gameIsOver = True
             if showMessage:
-                messagebox.showinfo("Gratz", "You WIN!!")
+                self.showFinalMessage(self.Result)
                 self.set_defaults(master=self.master, N=self.feildSize[0], M=self.feildSize[1],
                           copsRate=self.copsRate)
 
@@ -371,11 +369,9 @@ class forest_abstract():
             self.Result = gameResultEmum['lose']
             self.gameIsOver = True
             if showMessage:
-                messagebox.showinfo("Busted", "Game Over!")
+                self.showFinalMessage(self.Result)
                 self.set_defaults(master=self.master, N=self.feildSize[0], M=self.feildSize[1],
                           copsRate= self.copsRate)
-
-        #self.newForest()
 
     def check_win(self):
         t = 0
@@ -396,7 +392,19 @@ class forest_abstract():
 
         return False
 
-    #AI section
+    def showFinalMessage(self, msgNo = -1, msgText = '', msgCaption = ''):
+        if msgNo == -1:
+            msgNo = self.Result
+        if msgNo == gameResultEmum['win']:
+            messagebox.showinfo("Gratz", "You WIN!!")
+        elif msgNo == gameResultEmum['lose']:
+            messagebox.showinfo("Busted", "Game Over!")
+        elif msgNo == gameResultEmum['confused']:
+            messagebox.showinfo("Halp!!1", "Halp me! Im so confused")
+        else:
+            messagebox.showinfo(msgCaption, msgText)
+
+ #AI section######################################
     def hint(self, imAI = False):
         #probability calculate
         mg = magicNumber
@@ -427,8 +435,9 @@ class forest_abstract():
                     if tree.pb <= 0.75:
                         self.set_badguess_icon(tree)
                         badGuess.append(tree.treeCord)
-                        tree.toolTip.set_text(str(tree.pb))
-                        tree.toolTip.on()
+                        treeBut = self.treeButMap[tree.x][tree.y]
+                        treeBut.toolTip.set_text(str(tree.pb))
+                        treeBut.toolTip.on()
                     j += 1
                     continue
                 if tree.pb < minP:
@@ -450,14 +459,16 @@ class forest_abstract():
         for crd in crdMaxP:
             tree = self.treeMap[crd[0]][crd[1]]
             self.set_no_icon(tree)
-            tree.toolTip.set_text(str(tree.pb if tree.pb != mg else 1))
-            tree.toolTip.on()
+            treeBut = self.treeButMap[tree.x][tree.y]
+            treeBut.toolTip.set_text(str(tree.pb if tree.pb != mg else 1))
+            treeBut.toolTip.on()
 
         for crd in crdMinP:
             tree = self.treeMap[crd[0]][crd[1]]
             self.set_ok_icon(tree)
-            tree.toolTip.set_text(str(tree.pb if tree.pb != mg else 1))
-            tree.toolTip.on()
+            treeBut = self.treeButMap[tree.x][tree.y]
+            treeBut.toolTip.set_text(str(tree.pb if tree.pb != mg else 1))
+            treeBut.toolTip.on()
 
         if imAI:
             return crdMaxP, crdMinP, badGuess
@@ -586,14 +597,6 @@ class forest_abstract():
             return True
         return  False
 
-    def set_ok_icon(self, tree):
-        tree['image'] = self.icons[iconEnum['ok']]
-
-    def set_no_icon(self, tree):
-        tree['image'] = self.icons[iconEnum['no']]
-
-    def set_badguess_icon(self, tree):
-        tree['image'] = self.icons[iconEnum['badGuess']]
 
     def doStep(self, showMessage=False):
         #self.master.update_idletasks()

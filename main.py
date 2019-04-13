@@ -29,10 +29,9 @@ class main():
         master = self.mapFrame
         N = Xf
         M = Yf
-        self.forest = None
-        self.forest = forest_abstract( master=master, N = N, M = M)
-        self.hintBut['command'] = self.forest.hint
-        self.labelCopsNum['textvariable'] = self.forest.varCopsNum
+        self.forest.set_defaults(master=master, N = N, M = M)
+        self.forest.restore_all_icons()
+
 
     def goBakaGo(self):
         steps = 1
@@ -42,15 +41,10 @@ class main():
             messagebox.showinfo("Halp!!1", "Halp me! Im so confused")
         else:
             print('Steps ' + str(steps) + ' Res ' + str(self.forest.Result))
-            if self.forest.Result == gameResultEmum['win']:
-                messagebox.showinfo("Gratz", "You WIN!!")
-            elif self.forest.Result == gameResultEmum['lose']:
-                messagebox.showinfo("Busted", "Game Over!")
+            self.forest.showFinalMessage()
             self.new_forest()
 
-
-
-    def testBakaAI(self, numberOfGame = 10):
+    def testBakaAI(self, numberOfGame = 100):
         testResult = [0,  # loses
                       0,  # confused
                       0]  # wins
